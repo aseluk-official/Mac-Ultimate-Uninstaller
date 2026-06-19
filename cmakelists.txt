@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.14)
+
+project("Mac_Ultimate_Uninstaller")
+set(CMAKE_CXX_STANDARD 20)
+
+file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+
+add_executable(Mac_Ultimate_Uninstaller ${MY_SOURCES})
+
+target_include_directories(Mac_Ultimate_Uninstaller PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/header/")
