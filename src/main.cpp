@@ -8,6 +8,29 @@
 #include <algorithm>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
+#include <sstream>
+
+namespace fs = std::filesystem;
+
+std::vector<std::string> SplitString(std::string& text, char delimiter, std::vector<std::string>& output)
+{
+    output.clear();
+    std::string token;
+    std::stringstream stream(text);
+
+    while (std::getline(stream, token, delimiter)){
+        output.push_back(token);
+    }
+    return output;
+}
+
+std::vector<std::string> RemoveEmptyItems(std::vector<std::string>& list){
+    for(int i = list.size() - 1; i >= 0; --i){
+        if (list[i].empty()) list.erase(list.begin() + i);
+    }
+    return list;
+}
 
 std::string runCommand(const std::string& cmd) {
     std::array<char, 4096> buffer;
@@ -44,42 +67,85 @@ bool isRootOwned(const std::string& path)
     throw std::runtime_error("File or directory does not exist: " + path);
 }
 
-bool canWriteAndModify(const std::string &path)
+bool canWriteAndModify(const std::string& path)
 {
     return (access(path.c_str(), W_OK) == 0);
 }
 
 const std::string helpText = "Help text";
+const std::string doesNotTakeParam = " command does not take a parameter\n";
+const std::string doesTakeParam = " command needs a parameter\n";
+const std::string doesTakeParams = " command needs parameters\n";
+const std::string doesTakeOneParam = " command only takes one parameter\n";
 int main(){
     std::cout << "=========================================\n";
     std::cout << "    Mac Ultimate Uninstaller CLI v1.0      \n";
     std::cout << "=========================================\n";
 
+    std::string pureCommand;
+    std::vector<std::string> command;
+
     while (true)
     {
-        std::string command;
         std::cout << ">";
-        std::getline(std::cin, command);
+        std::getline(std::cin, pureCommand);
+        SplitString(pureCommand, ' ', command);
+        RemoveEmptyItems(command);
 
-        if (command == "quit")
+        if (command[0] == "quit")
         {
-            return 0;
+            if (command.size() > 1){
+                std::cout << "quit" << doesNotTakeParam;
+            }
+            else return 0;
         }
-        else if (command == "help"){
-            std::cout << helpText << "\n";
+        else if (command[0] == "help")
+        {
+            if (command.size() > 1)
+            {
+                std::cout << "help" << doesNotTakeParam;
+            }
+            else std::cout << helpText << "\n";
         }
-        else if (command == "list"){
-            std::string output = runCommand("pkgutil --packages");
-            std::cout << output;
+        else if (command[0] == "list")
+        {
+            if (command.size() > 1)
+            {
+                std::cout << "list" << doesNotTakeParam;
+            }
+            else{
+                std::string output = runCommand("pkgutil --packages");
+                std::cout << output;
+            }
         }
-        else if (command == "clear"){
-            std::cout << std::string(100, '\n');
+        else if (command[0] == "search")
+        {
+            if (command.size() == 1) std::cout << "search" << doesTakeParam;
+            else if (command.size() > 2) std::cout << "search" << doesTakeOneParam;
+            else
+            {
+                std::string output = runCommand("pkgutil --packages | grep -i \"" + command[1] + "\"");
+                std::cout << output;
+            }
         }
-        else if (command.find("delete ") == 0){
-            command.erase(0, 7); // delete the "delete " from the text
-            std::string filesCreated = runCommand("pkgutil --files " + command);
-            std::cout << filesCreated << "\n";
-            //runCommandAsAdmin("pkgutil --forget " + command); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
+        else if (command[0] == "clear"){
+            if (command.size() > 1)
+            {
+                std::cout << "clear" << doesNotTakeParam;
+            }
+            else std::cout << std::string(100, '\n');
+        }
+        else if (command[0] == "delete"){
+            if (command.size() == 1)
+                std::cout << "delete" << doesTakeParam;
+            else if (command.size() > 2)
+                std::cout << "delete" << doesTakeOneParam;
+            else
+            {
+                std::string filesCreated = runCommand("pkgutil --files " + pureCommand);
+                std::cout << filesCreated << "\n";
+                // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
+            }
         }
         else {
             std::cout << "Type \"help\" for help\n";
