@@ -73,6 +73,7 @@ bool canWriteAndModify(const std::string& path)
 }
 
 const std::string helpText = "Help text\n";
+const std::string emptyInputHint = "Type \"help\" for help\n";
 const std::string doesNotTakeParam = " command does not take a parameter\n";
 const std::string doesTakeParam = " command needs a parameter\n";
 const std::string doesTakeParams = " command needs parameters\n";
@@ -92,7 +93,10 @@ int main(){
 
         SplitString(pureCommand, ' ', command);
         RemoveEmptyItems(command);
-        if (command.empty()) command.push_back(""); // if the list is empty the program crashes
+        if (command.empty()){
+            std::cout << emptyInputHint;
+            continue;
+        }
 
         if (command[0] == "quit")
         {
@@ -100,7 +104,7 @@ int main(){
                 std::cout << "quit" << doesNotTakeParam;
                 continue;
             }
-            return 0;
+            break;
         }
         else if (command[0] == "help")
         {
@@ -156,7 +160,8 @@ int main(){
             // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
         }
         else {
-            std::cout << "Type \"help\" for help\n";
+            std::cout << emptyInputHint;
         }
     }
+    return 0;
 }
