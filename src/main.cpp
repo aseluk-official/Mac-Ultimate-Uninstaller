@@ -72,7 +72,7 @@ bool canWriteAndModify(const std::string& path)
     return (access(path.c_str(), W_OK) == 0);
 }
 
-const std::string helpText = "Help text";
+const std::string helpText = "Help text\n";
 const std::string doesNotTakeParam = " command does not take a parameter\n";
 const std::string doesTakeParam = " command needs a parameter\n";
 const std::string doesTakeParams = " command needs parameters\n";
@@ -89,63 +89,71 @@ int main(){
     {
         std::cout << ">";
         std::getline(std::cin, pureCommand);
+
         SplitString(pureCommand, ' ', command);
         RemoveEmptyItems(command);
+        if (command.empty()) command.push_back(""); // if the list is empty the program crashes
 
         if (command[0] == "quit")
         {
             if (command.size() > 1){
                 std::cout << "quit" << doesNotTakeParam;
+                continue;
             }
-            else return 0;
+            return 0;
         }
         else if (command[0] == "help")
         {
             if (command.size() > 1)
             {
                 std::cout << "help" << doesNotTakeParam;
+                continue;
             }
-            else std::cout << helpText << "\n";
+            std::cout << helpText;
         }
         else if (command[0] == "list")
         {
             if (command.size() > 1)
             {
                 std::cout << "list" << doesNotTakeParam;
+                continue;
             }
-            else{
-                std::string output = runCommand("pkgutil --packages");
-                std::cout << output;
-            }
+            std::string output = runCommand("pkgutil --packages");
+            std::cout << output;
         }
         else if (command[0] == "search")
         {
-            if (command.size() == 1) std::cout << "search" << doesTakeParam;
-            else if (command.size() > 2) std::cout << "search" << doesTakeOneParam;
-            else
-            {
-                std::string output = runCommand("pkgutil --packages | grep -i \"" + command[1] + "\"");
-                std::cout << output;
+            if (command.size() == 1){
+                std::cout << "search" << doesTakeParam;
+                continue;
+            } 
+            else if (command.size() > 2){
+                std::cout << "search" << doesTakeOneParam;
+                continue;
             }
+            std::string output = runCommand("pkgutil --packages | grep -i \"" + command[1] + "\"");
+            std::cout << output;
         }
         else if (command[0] == "clear"){
             if (command.size() > 1)
             {
                 std::cout << "clear" << doesNotTakeParam;
+                continue;
             }
-            else std::cout << std::string(100, '\n');
+            std::cout << std::string(100, '\n');
         }
         else if (command[0] == "delete"){
-            if (command.size() == 1)
+            if (command.size() == 1){
                 std::cout << "delete" << doesTakeParam;
-            else if (command.size() > 2)
-                std::cout << "delete" << doesTakeOneParam;
-            else
-            {
-                std::string filesCreated = runCommand("pkgutil --files " + pureCommand);
-                std::cout << filesCreated << "\n";
-                // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
+                continue;
             }
+            else if (command.size() > 2){
+                std::cout << "delete" << doesTakeOneParam;
+                continue;
+            }
+            std::string filesCreated = runCommand("pkgutil --files " + command[1]);
+            std::cout << filesCreated << "\n";
+            // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
         }
         else {
             std::cout << "Type \"help\" for help\n";
