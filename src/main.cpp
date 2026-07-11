@@ -117,6 +117,11 @@ const std::string doesTakeParam = " command needs a parameter\n";
 const std::string doesTakeParams = " command needs parameters\n";
 const std::string doesTakeOneParam = " command only takes one parameter\n";
 int main(){
+    if (getuid()){
+        std::cout << "Needs sudo\n";
+        return 1;
+    }
+
     std::cout << "=========================================\n";
     std::cout << "    Mac Ultimate Uninstaller CLI v1.0      \n";
     std::cout << "=========================================\n";
