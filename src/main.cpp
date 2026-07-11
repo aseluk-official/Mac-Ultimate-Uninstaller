@@ -58,54 +58,82 @@ std::string runCommandAsAdmin(const std::string& cmd){
     return result;
 }
 
-bool isRootOwned(const std::string& path)
+bool isRootOwned(const fs::path& path)
 {
     struct stat info;
-    if (stat(path.c_str(), &info) == 0)
+    if (stat(path.string().c_str(), &info) == 0)
     {
         return !info.st_uid;
     }
-    throw std::runtime_error("File or directory does not exist: " + path);
+    throw std::runtime_error("File or directory does not exist: " + path.string());
 }
 
-bool canDelete(const std::string &path)
+bool canDelete(const fs::path &path)
 {
-    // Önce dosyanın varlığını kontrol et
-    if (!std::filesystem::exists(path))
-        return false;
+    fs::file_status s = fs::status(path);
+    fs::perms p = s.permissions();
 
-    // Dosyanın kendisinin değil, bulunduğu klasörün yolunu alıyoruz
-    std::string parentPath = std::filesystem::path(path).parent_path().string();
-
-    // Eğer üst klasör boşsa (örn: sadece "dosya.txt" yazılmışsa) mevcut dizine bak
-    if (parentPath.empty())
-        parentPath = ".";
-
-    // İşte şimdi üst klasörde Yazma (W) ve Erişim (X) yetkisini doğru kontrol ediyoruz
-    return (access(parentPath.c_str(), W_OK | X_OK) == 0);
+    if ((p & fs::perms::owner_write) != fs::perms::none) return true;
+    return false;
 }
 
-void deletePackage(const std::string& packageName){
+fs::path GetParentDirectory(const std::string &packageName)
+{
+    static std::vector<std::string> output;
+
+    std::string volume;
+    std::string location;
+
+    std::string textOutput = runCommand("pkgutil --info " + packageName);
+
+    SplitString(textOutput, '\n', output);
+    RemoveEmptyItems(output);
+
+    volume = output[2];
+    volume.erase(0, static_cast<std::string>("volume: ").length());
+
+    location = output[3];
+    location.erase(0, static_cast<std::string>("location: ").length());
+    location = location == "/" ? "" : location;
+
+    return static_cast<fs::path>(volume + location);
+}
+
+void deletePackage(const std::string& packageName)
+{
     static std::vector<std::string> packagePaths;
 
     int failed = 0;
     int successful = 0;
+    int successfulButRisky = 0;
+
+    fs::path parentDirectory = GetParentDirectory(packageName);
 
     std::string filesCreated = runCommand("pkgutil --files " + packageName);
     SplitString(filesCreated, '\n', packagePaths);
     for (const auto& i : packagePaths | std::views::reverse){
         fs::path path = i;
-        if (canDelete(i))
+        path = parentDirectory / path;
+        std::cout << path << "\n";
+
+        if (canDelete(path))
         {
-            std::cout << "✅ Doesn't require root " << i << "\n";
-            ++successful;
+            if (isRootOwned(path)){
+                std::cout << "⚠️ Risky to delete " << i << "\n";
+                ++successfulButRisky;
+            }
+            else{
+                std::cout << "✅ Can delete " << i << "\n";
+                ++successful;
+            }
         }
         else{
-            std::cout << "❌ Does require root " << i << "\n";
+            std::cout << "❌ Can't delete " << i << "\n";
             ++failed;
         }
     }
     std::cout << "✅ " << successful << " successful deletions\n";
+    std::cout << "⚠️ " << successfulButRisky << " risky deletions\n";
     std::cout << "❌ " << failed << " failed deletions\n";
     // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
 }
