@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <vector>
 #include <sstream>
+#include <ranges>
 
 namespace fs = std::filesystem;
 
@@ -67,9 +68,46 @@ bool isRootOwned(const std::string& path)
     throw std::runtime_error("File or directory does not exist: " + path);
 }
 
-bool canWriteAndModify(const std::string& path)
+bool canDelete(const std::string &path)
 {
-    return (access(path.c_str(), W_OK) == 0);
+    // Önce dosyanın varlığını kontrol et
+    if (!std::filesystem::exists(path))
+        return false;
+
+    // Dosyanın kendisinin değil, bulunduğu klasörün yolunu alıyoruz
+    std::string parentPath = std::filesystem::path(path).parent_path().string();
+
+    // Eğer üst klasör boşsa (örn: sadece "dosya.txt" yazılmışsa) mevcut dizine bak
+    if (parentPath.empty())
+        parentPath = ".";
+
+    // İşte şimdi üst klasörde Yazma (W) ve Erişim (X) yetkisini doğru kontrol ediyoruz
+    return (access(parentPath.c_str(), W_OK | X_OK) == 0);
+}
+
+void deletePackage(const std::string& packageName){
+    static std::vector<std::string> packagePaths;
+
+    int failed = 0;
+    int successful = 0;
+
+    std::string filesCreated = runCommand("pkgutil --files " + packageName);
+    SplitString(filesCreated, '\n', packagePaths);
+    for (const auto& i : packagePaths | std::views::reverse){
+        fs::path path = i;
+        if (canDelete(i))
+        {
+            std::cout << "✅ Doesn't require root " << i << "\n";
+            ++successful;
+        }
+        else{
+            std::cout << "❌ Does require root " << i << "\n";
+            ++failed;
+        }
+    }
+    std::cout << "✅ " << successful << " successful deletions\n";
+    std::cout << "❌ " << failed << " failed deletions\n";
+    // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
 }
 
 const std::string helpText = "Help text\n";
@@ -155,9 +193,7 @@ int main(){
                 std::cout << "delete" << doesTakeOneParam;
                 continue;
             }
-            std::string filesCreated = runCommand("pkgutil --files " + command[1]);
-            std::cout << filesCreated << "\n";
-            // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
+            deletePackage(command[1]);
         }
         else {
             std::cout << emptyInputHint;

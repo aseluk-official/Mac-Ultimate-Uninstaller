@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
 
 project("Mac_Ultimate_Uninstaller")
+
+if(NOT APPLE)
+    message(FATAL_ERROR "Program not compatable outside macos sorry")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
