@@ -104,6 +104,7 @@ void deletePackage(const std::string& packageName)
     static std::vector<std::string> packagePaths;
 
     int failed = 0;
+    int cantBeDeleted = 0;
     int doesntExist = 0;
     int successful = 0;
     int successfulButRisky = 0;
@@ -116,7 +117,14 @@ void deletePackage(const std::string& packageName)
         fs::path path = i;
         path = parentDirectory / path;
 
-        if (!fs::exists(path)){
+        std::error_code ec;
+        if (!fs::exists(path, ec))
+        {
+            if (ec){
+                std::cout << "❌ " << i << " Failed" << ec.message() << "\n";
+                ++failed;
+                continue;
+            }
             std::cout << "☢️ " << i << " Doesn't Exist\n";
             ++doesntExist;
             continue;
@@ -132,15 +140,16 @@ void deletePackage(const std::string& packageName)
                 ++successful;
             }
         }
-        else{
-            std::cout << "❌ " << i << " Can't be deleted \n";
-            ++failed;
+        else {
+            std::cout << "❌ " << i << " Can't be deleted\n";
+            ++cantBeDeleted;
         }
     }
     std::cout << "✅ " << successful << " successful deletions\n";
     std::cout << "⚠️ " << successfulButRisky << " risky deletions\n";
     std::cout << "☢️ " << doesntExist << " files doesn't exist\n";
     std::cout << "❌ " << failed << " failed deletions\n";
+    std::cout << "❌ " << cantBeDeleted << " files can't be deleted\n";
     // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
 }
 
