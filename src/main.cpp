@@ -104,6 +104,7 @@ void deletePackage(const std::string& packageName)
     static std::vector<std::string> packagePaths;
 
     int failed = 0;
+    int doesntExist = 0;
     int successful = 0;
     int successfulButRisky = 0;
 
@@ -114,26 +115,31 @@ void deletePackage(const std::string& packageName)
     for (const auto& i : packagePaths | std::views::reverse){
         fs::path path = i;
         path = parentDirectory / path;
-        std::cout << path << "\n";
 
+        if (!fs::exists(path)){
+            std::cout << "☢️ " << i << " Doesn't Exist\n";
+            ++doesntExist;
+            continue;
+        }
         if (canDelete(path))
         {
             if (isRootOwned(path)){
-                std::cout << "⚠️ Risky to delete " << i << "\n";
+                std::cout << "⚠️ " << i << " Is risky to delete\n";
                 ++successfulButRisky;
             }
             else{
-                std::cout << "✅ Can delete " << i << "\n";
+                std::cout << "✅ " << i << " Can be deleted\n";
                 ++successful;
             }
         }
         else{
-            std::cout << "❌ Can't delete " << i << "\n";
+            std::cout << "❌ " << i << " Can't be deleted \n";
             ++failed;
         }
     }
     std::cout << "✅ " << successful << " successful deletions\n";
     std::cout << "⚠️ " << successfulButRisky << " risky deletions\n";
+    std::cout << "☢️ " << doesntExist << " files doesn't exist\n";
     std::cout << "❌ " << failed << " failed deletions\n";
     // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
 }
