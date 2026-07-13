@@ -100,7 +100,7 @@ fs::path GetParentDirectory(const std::string &packageName)
 }
 
 bool insideBundleFolder(fs::path path){
-    static std::array<std::string, 5> appBundleExtensions = {".app", ".vst3", ".vst", ".component", ".aax"}; // more extensions will be added
+    static std::array<std::string, 5> appBundleExtensions = {".app", ".vst3", ".vst", ".component", ".aaxplugin"}; // more extensions might be added
     auto current = path.parent_path();
     while (current != current.root_path() && !current.empty()){
         for (const auto& i : appBundleExtensions){
