@@ -79,7 +79,7 @@ bool canDelete(const fs::path &path)
     return false;
 }
 
-fs::path GetParentDirectory(const std::string &packageName)
+fs::path GetPackageParentDirectory(const std::string &packageName)
 {
     static std::vector<std::string> output;
 
@@ -102,7 +102,7 @@ fs::path GetParentDirectory(const std::string &packageName)
 }
 
 const std::set<fs::path>& getProhibitedFolders(){
-    static std::set<fs::path> prohibitedFolders = {"/Applications", "/Library", "~/Library", "/Users", "~", "/System", "/ Library", "/bin", "/sbin", "/usr", "~/Desktop", "~/Documents", "~/Downloads", "/private", "/etc", "/var", "/tmp", "/Volumes"}; // "~" means user folder
+    static std::set<fs::path> prohibitedFolders = {"Applications", "/Library", "~/Library", "/Users", "~", "/System", "/ Library", "/bin", "/sbin", "/usr", "~/Desktop", "~/Documents", "~/Downloads", "/private", "/etc", "/var", "/tmp", "/Volumes", "/Library/Audio/Plug-Ins/Components", "~/Library/Audio/Plug-Ins/Components", "/Library/Audio/Plug-Ins/VST", "~/Library/Audio/Plug-Ins/VST", "/Library/Audio/Plug-Ins/VST3", "~/Library/Audio/Plug-Ins/VST3", "/Library/Application Support/Avid/Audio/Plug-Ins", "~/Library/Application Support/Avid/Audio/Plug-Ins", "/Library/Audio/Plug-Ins/CLAP", "~/Library/Audio/Plug-Ins/CLAP"}; // "~" means user folder   
     static bool initialized = false;
 
     if (!initialized){
@@ -162,7 +162,7 @@ void deletePackage(const std::string& packageName)
     int notEmpty = 0;
     int prohibitedFolder = 0;
 
-    fs::path parentDirectory = GetParentDirectory(packageName);
+    fs::path parentDirectory = GetPackageParentDirectory(packageName);
 
     std::string filesCreated = runCommand("pkgutil --files " + packageName);
     SplitString(filesCreated, '\n', packagePaths);
@@ -207,7 +207,13 @@ void deletePackage(const std::string& packageName)
                     ++notEmpty;
                 }
                 else{
-                    std::cout << "✅ " << path << " Can be deleted\n";
+                    std::cout << "✅ " << path << " Is deleted\n";
+                    if (isAnBundleFolder(path)){
+                        fs::remove_all(path);
+                    }
+                    else{
+                        fs::remove(path);
+                    }
                     ++successful;
                 }
             }
@@ -226,8 +232,7 @@ void deletePackage(const std::string& packageName)
     std::cout << "❌ " << failed << " failed deletions\n";
     std::cout << "❌ " << cantBeDeleted << " files can't be deleted\n";
 
-    
-    // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
+    runCommandAsAdmin("pkgutil --forget " + packageName);
 }
 
 const std::string helpText = "Help text\n";
