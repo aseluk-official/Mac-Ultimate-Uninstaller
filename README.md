@@ -5,7 +5,8 @@ This is a command line tool that helps you delete programs easily
 `sudo <path>`
 
 Here is all the commands:
-```quit: quits the program
+```
+quit: quits the program
 help: explains commands
 list: lists all of the programs
 search <program>: searches a program
