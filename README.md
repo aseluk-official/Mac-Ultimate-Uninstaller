@@ -11,4 +11,4 @@ list: lists all of the programs
 search <program>: searches a program
 clear: clears the console
 delete <program>: deletes a program
-delete-multiple <program1>, <program2>...: deletes multiple programs```
+delete-multiple <program1>, <program2>...: deletes multiple programs
