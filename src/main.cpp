@@ -11,6 +11,7 @@
 #include <vector>
 #include <sstream>
 #include <ranges>
+#include <set>
 
 namespace fs = std::filesystem;
 
@@ -99,13 +100,17 @@ fs::path GetParentDirectory(const std::string &packageName)
     return static_cast<fs::path>(volume + location);
 }
 
+
+bool isAnBundleFolder(fs::path path){
+    const static std::set<std::string> appBundleExtensions = {".app", ".vst3", ".vst", ".component", ".aaxplugin"}; // more extensions might be added
+
+    return appBundleExtensions.count(path.extension());
+}
 bool insideBundleFolder(fs::path path){
-    static std::array<std::string, 5> appBundleExtensions = {".app", ".vst3", ".vst", ".component", ".aaxplugin"}; // more extensions might be added
     auto current = path.parent_path();
     while (current != current.root_path() && !current.empty()){
-        for (const auto& i : appBundleExtensions){
-            if (current.extension() == i)
-                return true;
+        if (isAnBundleFolder(current)){
+            return true;
         }
         current = current.parent_path();
     }
@@ -122,6 +127,7 @@ void deletePackage(const std::string& packageName)
     int successful = 0;
     int successfulButRisky = 0;
     int insideAppBundle = 0;
+    int notEmpty = 0;
 
     fs::path parentDirectory = GetParentDirectory(packageName);
 
@@ -132,7 +138,7 @@ void deletePackage(const std::string& packageName)
         path = parentDirectory / path;
 
         if (insideBundleFolder(path)){
-            std::cout << "⏩ " << path.string() << " is inside an app bundle so it is skipped\n";
+            std::cout << "⏩ " << path << " is inside an app bundle so it is skipped\n";
             ++insideAppBundle;
             continue;
         }
@@ -140,33 +146,41 @@ void deletePackage(const std::string& packageName)
         if (!fs::exists(path, ec))
         {
             if (ec){
-                std::cout << "❌ " << path.string() << " Failed" << ec.message() << "\n";
+                std::cout << "❌ " << path << " Failed" << ec.message() << "\n";
                 ++failed;
                 continue;
             }
-            std::cout << "☢️  " << path.string() << " Doesn't Exist\n";
+            std::cout << "☢️  " << path << " Doesn't Exist\n";
             ++doesntExist;
             continue;
         }
         if (canDelete(path))
         {
-            if (isRootOwned(path)){
-                std::cout << "⚠️  " << path.string() << " Is risky to delete\n";
+            if (isRootOwned(path) && false){
+                std::cout << "⚠️  " << path << " Is risky to delete\n";
                 ++successfulButRisky;
             }
             else{
-                std::cout << "✅ " << path.string() << " Can be deleted\n";
-                ++successful;
+                if (fs::is_directory(path) && !isAnBundleFolder(path) && !fs::is_empty(path))
+                {
+                    std::cout << "⚠️  " << path << " Is not empty\n";
+                    ++notEmpty;
+                }
+                else{
+                    std::cout << "✅ " << path << " Can be deleted\n";
+                    ++successful;
+                }
             }
         }
         else {
-            std::cout << "❌ " << path.string() << " Can't be deleted\n";
+            std::cout << "❌ " << path << " Can't be deleted\n";
             ++cantBeDeleted;
         }
     }
-    std::cout << "⏩ " << insideAppBundle << " files was in a app bundle so they are skipped\n";
+    std::cout << "\n\n⏩ " << insideAppBundle << " files was in a app bundle so they are skipped\n";
     std::cout << "✅ " << successful << " successful deletions\n";
-    std::cout << "⚠️  " << successfulButRisky << " risky deletions\n";
+    std::cout << "⚠️  " << notEmpty << " folders are not empty\n";
+    //std::cout << "⚠️  " << successfulButRisky << " risky deletions\n";
     std::cout << "☢️  " << doesntExist << " files doesn't exist\n";
     std::cout << "❌ " << failed << " failed deletions\n";
     std::cout << "❌ " << cantBeDeleted << " files can't be deleted\n";
