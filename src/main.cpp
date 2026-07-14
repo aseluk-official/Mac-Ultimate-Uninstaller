@@ -12,6 +12,7 @@
 #include <sstream>
 #include <ranges>
 #include <set>
+#include <regex>
 
 namespace fs = std::filesystem;
 
@@ -100,6 +101,37 @@ fs::path GetParentDirectory(const std::string &packageName)
     return static_cast<fs::path>(volume + location);
 }
 
+const std::set<fs::path>& getProhibitedFolders(){
+    static std::set<fs::path> prohibitedFolders = {"/Applications", "/Library", "~/Library", "/Users", "~", "/System", "/ Library", "/bin", "/sbin", "/usr", "~/Desktop", "~/Documents", "~/Downloads", "/private", "/etc", "/var", "/tmp", "/Volumes"}; // "~" means user folder
+    static bool initialized = false;
+
+    if (!initialized){
+        const char *homeDirAsChar = std::getenv("HOME");
+
+        if (!homeDirAsChar) throw std::runtime_error("Can't get the user folder");
+
+        std::string homeDir(homeDirAsChar);
+        std::set<fs::path> updatedFolders;
+
+        for (const auto &i : prohibitedFolders)
+        {
+            std::string updatedPath = std::regex_replace(i.string(), std::regex("~"), homeDir);
+            updatedFolders.insert(updatedPath);
+        }
+        prohibitedFolders = std::move(updatedFolders);
+
+        initialized = true;
+    }
+    return prohibitedFolders;
+}
+
+bool isAProhibitedFolder(fs::path path)
+{
+    const auto& prohibitedFolders =  getProhibitedFolders();
+
+    if (path == path.root_path()) return true;
+    return prohibitedFolders.count(path);
+}
 
 bool isAnBundleFolder(fs::path path){
     const static std::set<std::string> appBundleExtensions = {".app", ".vst3", ".vst", ".component", ".aaxplugin"}; // more extensions might be added
@@ -128,6 +160,7 @@ void deletePackage(const std::string& packageName)
     int successfulButRisky = 0;
     int insideAppBundle = 0;
     int notEmpty = 0;
+    int prohibitedFolder = 0;
 
     fs::path parentDirectory = GetParentDirectory(packageName);
 
@@ -137,11 +170,6 @@ void deletePackage(const std::string& packageName)
         fs::path path = i;
         path = parentDirectory / path;
 
-        if (insideBundleFolder(path)){
-            std::cout << "⏩ " << path << " is inside an app bundle so it is skipped\n";
-            ++insideAppBundle;
-            continue;
-        }
         std::error_code ec;
         if (!fs::exists(path, ec))
         {
@@ -152,6 +180,18 @@ void deletePackage(const std::string& packageName)
             }
             std::cout << "☢️  " << path << " Doesn't Exist\n";
             ++doesntExist;
+            continue;
+        }
+        if (isAProhibitedFolder(path))
+        {
+            std::cout << "⛔️ " << path << " is a prohibited folder\n";
+            ++prohibitedFolder;
+            continue;
+        }
+        if (insideBundleFolder(path))
+        {
+            std::cout << "⏩ " << path << " is inside an app bundle so it is skipped\n";
+            ++insideAppBundle;
             continue;
         }
         if (canDelete(path))
@@ -182,8 +222,11 @@ void deletePackage(const std::string& packageName)
     std::cout << "⚠️  " << notEmpty << " folders are not empty\n";
     //std::cout << "⚠️  " << successfulButRisky << " risky deletions\n";
     std::cout << "☢️  " << doesntExist << " files doesn't exist\n";
+    std::cout << "⛔️ " << prohibitedFolder << " folders are prohibited\n";
     std::cout << "❌ " << failed << " failed deletions\n";
     std::cout << "❌ " << cantBeDeleted << " files can't be deleted\n";
+
+    
     // runCommandAsAdmin("pkgutil --forget " + comman d); NOT DOING IT NOW I DON'T WANNA SCREW MYSELF FOR NOW
 }
 
