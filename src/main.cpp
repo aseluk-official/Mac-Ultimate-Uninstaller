@@ -235,7 +235,16 @@ void deletePackage(const std::string& packageName)
     runCommandAsAdmin("pkgutil --forget " + packageName);
 }
 
-const std::string helpText = "Help text\n";
+const std::string helpText = "-------HELP-------\n"
+"quit: quits the program\n"
+"help: gives you this help text\n"
+"list: lists all of the programs\n"
+"search <program>: searches a program\n"
+"clear: clears the console\n"
+"delete <program>: deletes a program\n"
+"delete-multiple <program1>, <program2>...: deletes multiple programs\n"
+"-------HELP-------\n";
+
 const std::string emptyInputHint = "Type \"help\" for help\n";
 const std::string doesNotTakeParam = " command does not take a parameter\n";
 const std::string doesTakeParam = " command needs a parameter\n";
