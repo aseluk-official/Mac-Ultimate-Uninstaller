@@ -239,6 +239,7 @@ const std::string helpText = "Help text\n";
 const std::string emptyInputHint = "Type \"help\" for help\n";
 const std::string doesNotTakeParam = " command does not take a parameter\n";
 const std::string doesTakeParam = " command needs a parameter\n";
+const std::string doesTakeMultipleParam = " command needs multiple parameters\n";
 const std::string doesTakeParams = " command needs parameters\n";
 const std::string doesTakeOneParam = " command only takes one parameter\n";
 int main(){
@@ -324,6 +325,16 @@ int main(){
                 continue;
             }
             deletePackage(command[1]);
+        }
+        else if (command[0] == "delete-multiple")
+        {
+            if (command.size() == 1 || command.size() == 2)
+            {
+                std::cout << "delete-multiple" << doesTakeMultipleParam;
+                continue;
+            }
+            for (int32_t i = 1; i < command.size(); ++i)
+                deletePackage(command[i]);
         }
         else {
             std::cout << emptyInputHint;
