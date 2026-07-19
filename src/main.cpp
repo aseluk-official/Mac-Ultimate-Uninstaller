@@ -13,6 +13,7 @@
 #include <ranges>
 #include <set>
 #include <regex>
+#include "results.hpp"
 
 namespace fs = std::filesystem;
 
@@ -102,7 +103,7 @@ fs::path GetPackageParentDirectory(const std::string &packageName)
 }
 
 const std::set<fs::path>& getProhibitedFolders(){
-    static std::set<fs::path> prohibitedFolders = {"Applications", "/Library", "~/Library", "/Users", "~", "/System", "/ Library", "/bin", "/sbin", "/usr", "~/Desktop", "~/Documents", "~/Downloads", "/private", "/etc", "/var", "/tmp", "/Volumes", "/Library/Audio/Plug-Ins/Components", "~/Library/Audio/Plug-Ins/Components", "/Library/Audio/Plug-Ins/VST", "~/Library/Audio/Plug-Ins/VST", "/Library/Audio/Plug-Ins/VST3", "~/Library/Audio/Plug-Ins/VST3", "/Library/Application Support/Avid/Audio/Plug-Ins", "~/Library/Application Support/Avid/Audio/Plug-Ins", "/Library/Audio/Plug-Ins/CLAP", "~/Library/Audio/Plug-Ins/CLAP"}; // "~" means user folder   
+    static std::set<fs::path> prohibitedFolders = {"/Applications", "/Library", "~/Library", "/Users", "~", "/System", "/ Library", "/bin", "/sbin", "/usr", "~/Desktop", "~/Documents", "~/Downloads", "/private", "/etc", "/var", "/tmp", "/Volumes", "/Library/Audio/Plug-ins/Components", "~/Library/Audio/Plug-ins/Components", "/Library/Audio/Plug-ins/VST", "~/Library/Audio/Plug-ins/VST", "/Library/Audio/Plug-ins/VST3", "~/Library/Audio/Plug-ins/VST3", "/Library/Application Support/Avid/Audio/Plug-ins", "~/Library/Application Support/Avid/Audio/Plug-ins", "/Library/Audio/Plug-ins/CLAP", "~/Library/Audio/Plug-ins/CLAP", "/Library/Audio/Plug-ins", "~/Library/Audio/Plug-ins", "/Library/Audio", "~/Library/Audio"}; // "~" means user folder
     static bool initialized = false;
 
     if (!initialized){
@@ -149,18 +150,11 @@ bool insideBundleFolder(fs::path path){
 
     return false;
 }
-void deletePackage(const std::string& packageName)
+Results deletePackage(const std::string& packageName)
 {
     static std::vector<std::string> packagePaths;
 
-    int failed = 0;
-    int cantBeDeleted = 0;
-    int doesntExist = 0;
-    int successful = 0;
-    int successfulButRisky = 0;
-    int insideAppBundle = 0;
-    int notEmpty = 0;
-    int prohibitedFolder = 0;
+    Results results;
 
     fs::path parentDirectory = GetPackageParentDirectory(packageName);
 
@@ -175,36 +169,36 @@ void deletePackage(const std::string& packageName)
         {
             if (ec){
                 std::cout << "❌ " << path << " Failed" << ec.message() << "\n";
-                ++failed;
+                ++results.failed;
                 continue;
             }
             std::cout << "☢️  " << path << " Doesn't Exist\n";
-            ++doesntExist;
+            ++results.doesntExist;
             continue;
         }
         if (isAProhibitedFolder(path))
         {
             std::cout << "⛔️ " << path << " is a prohibited folder\n";
-            ++prohibitedFolder;
+            ++results.prohibitedFolder;
             continue;
         }
         if (insideBundleFolder(path))
         {
             std::cout << "⏩ " << path << " is inside an app bundle so it is skipped\n";
-            ++insideAppBundle;
+            ++results.insideAppBundle;
             continue;
         }
         if (canDelete(path))
         {
             if (isRootOwned(path) && false){
                 std::cout << "⚠️  " << path << " Is risky to delete\n";
-                ++successfulButRisky;
+                ++results.successfulButRisky;
             }
             else{
                 if (fs::is_directory(path) && !isAnBundleFolder(path) && !fs::is_empty(path))
                 {
                     std::cout << "⚠️  " << path << " Is not empty\n";
-                    ++notEmpty;
+                    ++results.notEmpty;
                 }
                 else{
                     std::cout << "✅ " << path << " Is deleted\n";
@@ -214,25 +208,18 @@ void deletePackage(const std::string& packageName)
                     else{
                         fs::remove(path);
                     }
-                    ++successful;
+                    ++results.successful;
                 }
             }
         }
         else {
             std::cout << "❌ " << path << " Can't be deleted\n";
-            ++cantBeDeleted;
+            ++results.cantBeDeleted;
         }
     }
-    std::cout << "\n\n⏩ " << insideAppBundle << " files was in a app bundle so they are skipped\n";
-    std::cout << "✅ " << successful << " successful deletions\n";
-    std::cout << "⚠️  " << notEmpty << " folders are not empty\n";
-    //std::cout << "⚠️  " << successfulButRisky << " risky deletions\n";
-    std::cout << "☢️  " << doesntExist << " files doesn't exist\n";
-    std::cout << "⛔️ " << prohibitedFolder << " folders are prohibited\n";
-    std::cout << "❌ " << failed << " failed deletions\n";
-    std::cout << "❌ " << cantBeDeleted << " files can't be deleted\n";
 
     runCommandAsAdmin("pkgutil --forget " + packageName);
+    return results;
 }
 
 const std::string helpText = "-------HELP-------\n"
@@ -245,6 +232,7 @@ const std::string helpText = "-------HELP-------\n"
 "delete-multiple <program1>, <program2>...: deletes multiple programs\n"
 "-------HELP-------\n";
 
+const std::string resultsText = "----------RESULTS----------\n";
 const std::string emptyInputHint = "Type \"help\" for help\n";
 const std::string doesNotTakeParam = " command does not take a parameter\n";
 const std::string doesTakeParam = " command needs a parameter\n";
@@ -253,12 +241,12 @@ const std::string doesTakeParams = " command needs parameters\n";
 const std::string doesTakeOneParam = " command only takes one parameter\n";
 int main(){
     if (getuid()){
-        std::cout << "Needs sudo\n";
+        std::cout << "Requires sudo\n";
         return 1;
     }
 
     std::cout << "=========================================\n";
-    std::cout << "    Mac Ultimate Uninstaller CLI v1.0      \n";
+    std::cout << "    Mac Ultimate Uninstaller CLI v1.1      \n";
     std::cout << "=========================================\n";
 
     std::string pureCommand;
@@ -333,7 +321,8 @@ int main(){
                 std::cout << "delete" << doesTakeOneParam;
                 continue;
             }
-            deletePackage(command[1]);
+            auto temp = deletePackage(command[1]).GiveResultsAsText();
+            std::cout << "\n\n" << resultsText << temp << resultsText;
         }
         else if (command[0] == "delete-multiple")
         {
@@ -342,8 +331,15 @@ int main(){
                 std::cout << "delete-multiple" << doesTakeMultipleParam;
                 continue;
             }
+            Results finalResults;
             for (int32_t i = 1; i < command.size(); ++i)
-                deletePackage(command[i]);
+            {
+                auto& item = command[i];
+
+                std::cout << "\n🟢 Started to delete " << item << "\n";
+                finalResults += deletePackage(item);
+            }
+            std::cout << "\n\n" << resultsText << finalResults.GiveResultsAsText() << resultsText;
         }
         else {
             std::cout << emptyInputHint;
